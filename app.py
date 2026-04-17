@@ -2,16 +2,11 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yfinance as yf
 import re
+import os   # ✅ FIXED
 
-# ─────────────────────────────────────────────
-# FLASK APP SETUP
-# ─────────────────────────────────────────────
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-# ─────────────────────────────────────────────
-# STOCK SYMBOL DATABASE
-# ─────────────────────────────────────────────
 SYMBOL_MAP = {
     "apple": "AAPL",
     "google": "GOOGL",
@@ -21,7 +16,6 @@ SYMBOL_MAP = {
     "meta": "META",
     "nvidia": "NVDA",
 
-    # Indian Stocks
     "reliance": "RELIANCE.NS",
     "tcs": "TCS.NS",
     "infosys": "INFY.NS",
@@ -33,9 +27,6 @@ SYMBOL_MAP = {
 
 DIRECT_SYMBOL_PATTERN = re.compile(r'\b([A-Z]{2,5}(?:\.NS)?)\b')
 
-# ─────────────────────────────────────────────
-# INTENT DETECTION
-# ─────────────────────────────────────────────
 def detect_intent(text):
     text = text.lower()
 
@@ -50,20 +41,15 @@ def detect_intent(text):
     else:
         return "price"
 
-# ─────────────────────────────────────────────
-# SYMBOL DETECTION (FIXED)
-# ─────────────────────────────────────────────
 def extract_symbols(text):
     symbols = []
     text_lower = text.lower()
     text_upper = text.upper()
 
-    # Priority: company names
     for name, sym in SYMBOL_MAP.items():
         if name in text_lower:
             symbols.append(sym)
 
-    # Only allow valid symbols
     matches = DIRECT_SYMBOL_PATTERN.findall(text_upper)
     valid_symbols = set(SYMBOL_MAP.values())
 
@@ -73,9 +59,6 @@ def extract_symbols(text):
 
     return symbols
 
-# ─────────────────────────────────────────────
-# STOCK DATA FUNCTIONS
-# ─────────────────────────────────────────────
 def get_price(symbol):
     try:
         stock = yf.Ticker(symbol)
@@ -107,7 +90,6 @@ def get_price(symbol):
         print("PRICE ERROR:", e)
         return {"error": True}
 
-
 def get_trend(symbol):
     try:
         stock = yf.Ticker(symbol)
@@ -117,9 +99,8 @@ def get_trend(symbol):
             return {"trend": "No Data", "change_pct": 0}
 
         start = float(hist["Close"].iloc[0])
-        end = float(hist["Close"].iloc[-1]
+        end = float(hist["Close"].iloc[-1])  # ✅ FIXED
 
-)
         trend = "UP 📈" if end > start else "DOWN 📉"
 
         return {
@@ -131,9 +112,6 @@ def get_trend(symbol):
         print("TREND ERROR:", e)
         return {"trend": "Unavailable", "change_pct": 0}
 
-# ─────────────────────────────────────────────
-# RESPONSE BUILDER (UI COMPATIBLE)
-# ─────────────────────────────────────────────
 def build_response(intent, symbols):
 
     if intent == "greet":
@@ -153,7 +131,7 @@ def build_response(intent, symbols):
     if not symbols:
         return {
             "type": "error",
-            "text": "❌ Company not found. Try Apple, Tesla, Reliance."
+            "text": "❌ Company not found."
         }
 
     if intent == "compare":
@@ -163,10 +141,7 @@ def build_response(intent, symbols):
             if "error" not in data:
                 stocks.append(data)
 
-        return {
-            "type": "compare",
-            "data": stocks
-        }
+        return {"type": "compare", "data": stocks}
 
     symbol = symbols[0]
 
@@ -177,7 +152,6 @@ def build_response(intent, symbols):
             "text": f"{symbol} Trend: {data['trend']} ({data['change_pct']}%)"
         }
 
-    # PRICE
     data = get_price(symbol)
 
     if "error" in data:
@@ -192,9 +166,6 @@ def build_response(intent, symbols):
         "suggestions": [f"Trend of {symbol}", f"Compare {symbol} MSFT"]
     }
 
-# ─────────────────────────────────────────────
-# ROUTES
-# ─────────────────────────────────────────────
 @app.route('/')
 def home():
     return send_from_directory('static', 'index.html')
@@ -215,9 +186,6 @@ def chat():
 
     return jsonify(response)
 
-# ─────────────────────────────────────────────
-# RUN APP
-# ─────────────────────────────────────────────
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Server running on port {port}")
