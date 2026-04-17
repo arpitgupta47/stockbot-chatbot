@@ -219,5 +219,6 @@ def chat():
 # RUN APP
 # ─────────────────────────────────────────────
 if __name__ == '__main__':
-    print("🚀 Server running at http://localhost:5000")
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"🚀 Server running on port {port}")
+    app.run(host='0.0.0.0', port=port)
